@@ -1,3 +1,4 @@
+<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
@@ -64,6 +65,8 @@
           <div class="flex justify-between text-sm"><span class="text-gray-600">Vidrio (entrada)</span><span id="cVidrio" class="font-medium">—</span></div>
           <div class="flex justify-between text-sm"><span class="text-gray-600">Mano de obra</span><span id="cMano" class="font-medium">—</span></div>
           <div class="flex justify-between text-sm"><span class="text-gray-600">Transporte</span><span id="cTransporte" class="font-medium">—</span></div>
+          <div class="flex justify-between text-sm"><span class="text-gray-600">Plastificado (€/m²)</span><span id="cPlastificado" class="font-medium">—</span></div>
+          <div class="flex justify-between text-sm"><span class="text-gray-600">Driver seleccionado</span><span id="cDriver" class="font-medium">—</span></div>
         </div>
       </div>
 
@@ -77,7 +80,7 @@
         <span id="cTotal" class="text-2xl font-semibold">—</span>
       </div>
       <div class="flex items-center justify-between rounded-2xl border p-4 bg-green-50">
-        <span class="text-base font-medium">PVP (x2,88)</span>
+        <span class="text-base font-medium">PVP (x2,8)</span>
         <span id="cPVP" class="text-2xl font-semibold text-green-700">—</span>
       </div>
     </section>
@@ -90,12 +93,14 @@
     const CARTON_PRICE_PER_M = 1.76;
     const LABOR_RATE_PER_MIN = 0.25;
 
+    // Precio por m² de plastificado (variable)
+    const PLASTIFICADO_RATE_PER_M2 = 1.00;
+
+    // Fijos (sin plastificado ni driver)
     const FIXED_ITEMS = [
-      { label: "Plastificado espejo", price: 1.00 },
       { label: "4 codos marco trasero", price: 1.40 },
       { label: "8 tornillos TORX", price: 0.40 },
       { label: "Silicona", price: 0.50 },
-      { label: "Driver 60W", price: 6.50 },
       { label: "Base adhesiva brida", price: 0.15 },
       { label: "Bridas", price: 0.06 },
       { label: "Caja conexiones", price: 0.50 },
@@ -109,6 +114,16 @@
     ];
     const FIXED_COST = FIXED_ITEMS.reduce((acc, it) => acc + it.price, 0);
 
+    // Selección dinámica de driver por perímetro (cm)
+    function selectDriver(perimetroCm) {
+      if (perimetroCm <= 300) return { label: "Driver 30W", price: 7.65, alert: null };
+      if (perimetroCm <= 450) return { label: "Driver 45W", price: 9.90, alert: null };
+      if (perimetroCm <= 600) return { label: "Driver 60W", price: 13.30, alert: null };
+      if (perimetroCm <= 1000) return { label: "Driver 100W", price: 23.00, alert: null };
+      return { label: "—", price: 0, alert: "Perímetro supera 1000 cm. Revisar driver." };
+    }
+
+    // Modelo fanfold para cartón (del código original)
     const FANFOLD_WIDTHS_MM = [990, 1500, 1980, 2400];
     const K_FACTORS = {
       "990x990": 2.37997 / 3.60,
@@ -152,47 +167,73 @@
       const E = valNum("precioEspejo"), Min = valNum("minutos"), T = valNum("transporte"), Wcm = valNum("anchoCm"), Hcm = valNum("altoCm");
       const invalido = (Wcm <= 0 || Hcm <= 0);
 
+      // Geometría y métricas
       const Pcm = 2 * (Wcm + Hcm);
       const Pm  = Pcm / 100;
       const led_m = LED_FACTOR * Pm;
       const perfil_m = Pm;
+      const area_m2 = (Wcm * Hcm) / 10000;
 
+      // Cartón por fanfold
       const carton_m = cartonUnitsMeters(Wcm, Hcm);
       const costeCarton = CARTON_PRICE_PER_M * carton_m;
 
+      // Plastificado por m² (variable)
+      const costePlastificado = PLASTIFICADO_RATE_PER_M2 * area_m2;
+
+      // Driver dinámico
+      const driver = selectDriver(Pcm);
+      const costeDriver = driver.price;
+
+      // Costes principales
       const costePerfil = PROFILE_RATE_PER_M * perfil_m;
       const costeLed = LED_RATE_PER_M * led_m;
       const manoObra = LABOR_RATE_PER_MIN * Min;
-      const costeFabricacion = (invalido ? 0 : (E + costePerfil + costeLed + costeCarton + manoObra + T + FIXED_COST));
 
+      const costeFabricacion = (invalido ? 0 :
+        (E + costePerfil + costeLed + costeCarton + manoObra + T + FIXED_COST + costePlastificado + costeDriver)
+      );
+
+      // KPIs
       $("kpiPerimetro").textContent = invalido ? '—' : (Pcm.toFixed(0) + ' cm');
       $("kpiLed").textContent = invalido ? '—' : ((led_m * 100).toFixed(0) + ' cm');
       $("kpiPerfil").textContent = invalido ? '—' : ((perfil_m * 100).toFixed(0) + ' cm');
       $("kpiCarton").textContent = invalido ? '—' : ((carton_m * 100).toFixed(0) + ' cm');
 
+      // Desglose
       $("cPerfil").textContent = invalido ? '—' : euros(costePerfil);
       $("cLed").textContent = invalido ? '—' : euros(costeLed);
       $("cCarton").textContent = invalido ? '—' : euros(costeCarton);
       $("cVidrio").textContent = invalido ? '—' : euros(E);
       $("cMano").textContent = euros(manoObra);
       $("cTransporte").textContent = euros(T);
+      $("cPlastificado").textContent = invalido ? '—' : euros(costePlastificado);
+      $("cDriver").textContent = invalido ? '—' : `${driver.label}: ${euros(costeDriver)}`;
 
+      // Fijos
       $("fixedList").innerHTML = FIXED_ITEMS.map(it => `<li>${it.label}: ${euros(it.price)}</li>`).join('');
 
+      // Alerta si perímetro > 1000 cm
       const alertBox = $("driverAlert");
       const alertText = $("driverAlertText");
-      if (!invalido && Pcm > 600) {
+      if (!invalido && driver.alert) {
         alertBox.classList.remove('hidden');
-        alertText.textContent = `Perímetro: ${Pcm.toFixed(0)} cm (> 600 cm). Necesitas cambiar el driver.`;
+        alertText.textContent = driver.alert;
       } else {
         alertBox.classList.add('hidden');
         alertText.textContent = '';
       }
 
+      // Totales
       $("cTotal").textContent = euros(costeFabricacion);
-      const pvp = costeFabricacion * 2.88;
+      const pvp = costeFabricacion * 2.8;
       $("cPVP").textContent = euros(pvp);
     }
+
+    calc();
+  </script>
+</body>
+</html>
 
     calc();
   </script>
