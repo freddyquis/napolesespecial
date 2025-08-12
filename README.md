@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Calculadora de Costes de Espejo</title>
+  <title>Calculadora Nápoles</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 text-gray-900">
   <main class="max-w-3xl mx-auto p-6 space-y-6">
-    <h1 class="text-2xl font-semibold">Calculadora de Costes de Espejo</h1>
+    <h1 class="text-2xl font-semibold">Calculadora Nápoles</h1>
 
-    <!-- Panel de entradas (SIEMPRE tamaño en centímetros) -->
+    <!-- Entradas (obligatorias) -->
     <section class="grid grid-cols-1 gap-4 rounded-2xl border bg-white p-5 shadow-sm">
-      <h2 class="text-base font-medium">Entradas (obligatorias)</h2>
+      <h2 class="text-base font-medium">Entradas</h2>
       <div class="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
         <label class="block text-sm md:col-span-2">
           <span class="text-gray-600">Precio del espejo (€)</span>
@@ -36,97 +36,135 @@
           <input id="altoCm" type="number" step="1" class="mt-1 w-full rounded-lg border px-3 py-2" value="80" required />
         </label>
       </div>
-      <p class="text-xs text-gray-500">Introduce SIEMPRE el tamaño del espejo en centímetros. Las longitudes calculadas se muestran también en centímetros. Los costes usan tarifas en €/m (el sistema convierte cm → m internamente).</p>
     </section>
 
-    <!-- Resultados -->
+    <!-- Resultado -->
     <section class="grid grid-cols-1 gap-4 rounded-2xl border bg-white p-5 shadow-sm">
       <h2 class="text-base font-medium">Resultado</h2>
+
+      <div id="driverAlert" class="hidden rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-800">
+        ⚠️ <span id="driverAlertText"></span>
+      </div>
+
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-        <div class="rounded-xl border p-3">
-          <div class="text-gray-500">Perímetro</div>
-          <div id="kpiPerimetro" class="text-lg font-semibold">—</div>
-        </div>
-        <div class="rounded-xl border p-3">
-          <div class="text-gray-500">LED (cm)</div>
-          <div id="kpiLed" class="text-lg font-semibold">—</div>
-        </div>
-        <div class="rounded-xl border p-3">
-          <div class="text-gray-500">Perfil (cm)</div>
-          <div id="kpiPerfil" class="text-lg font-semibold">—</div>
-        </div>
-        <div class="rounded-xl border p-3">
-          <div class="text-gray-500">Cartón (cm)</div>
-          <div id="kpiCarton" class="text-lg font-semibold">—</div>
-        </div>
+        <div class="rounded-xl border p-3"><div class="text-gray-500">Perímetro</div><div id="kpiPerimetro" class="text-lg font-semibold">—</div></div>
+        <div class="rounded-xl border p-3"><div class="text-gray-500">LED (cm)</div><div id="kpiLed" class="text-lg font-semibold">—</div></div>
+        <div class="rounded-xl border p-3"><div class="text-gray-500">Perfil (cm)</div><div id="kpiPerfil" class="text-lg font-semibold">—</div></div>
+        <div class="rounded-xl border p-3"><div class="text-gray-500">Cartón (cm)</div><div id="kpiCarton" class="text-lg font-semibold">—</div></div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="rounded-xl border p-4 space-y-2">
+          <div class="text-sm font-medium mb-1">Costes dimensionables</div>
           <div class="flex justify-between text-sm"><span class="text-gray-600">Perfil REF-655</span><span id="cPerfil" class="font-medium">—</span></div>
           <div class="flex justify-between text-sm"><span class="text-gray-600">Tira LED 4000K</span><span id="cLed" class="font-medium">—</span></div>
           <div class="flex justify-between text-sm"><span class="text-gray-600">Cartón fan-fold</span><span id="cCarton" class="font-medium">—</span></div>
         </div>
         <div class="rounded-xl border p-4 space-y-2">
+          <div class="text-sm font-medium mb-1">Costes variables</div>
           <div class="flex justify-between text-sm"><span class="text-gray-600">Vidrio (entrada)</span><span id="cVidrio" class="font-medium">—</span></div>
           <div class="flex justify-between text-sm"><span class="text-gray-600">Mano de obra</span><span id="cMano" class="font-medium">—</span></div>
           <div class="flex justify-between text-sm"><span class="text-gray-600">Transporte</span><span id="cTransporte" class="font-medium">—</span></div>
-          <div class="flex justify-between text-sm"><span class="text-gray-600">Fijos</span><span id="cFijos" class="font-medium">—</span></div>
         </div>
       </div>
 
-      <div class="flex items-center justify-between rounded-2xl border p-4">
-        <span class="text-base font-medium">Total</span>
-        <span id="cTotal" class="text-2xl font-semibold">—</span>
+      <div class="rounded-xl border p-4 space-y-1 text-sm">
+        <div class="font-medium">Desglose de precios fijos:</div>
+        <ul id="fixedList" class="list-disc pl-6"></ul>
       </div>
 
-      <p class="text-xs text-gray-500">Parámetros: perfil 0,65625 €/m, LED 2,00 €/m (factor 0,953125), cartón 1,76 €/m (factor 1,125), fijos 11,47 €, mano de obra 0,25 €/min. Perímetro, LED, perfil y cartón se muestran en centímetros.</p>
+      <div class="flex items-center justify-between rounded-2xl border p-4">
+        <span class="text-base font-medium">Coste de fabricación</span>
+        <span id="cTotal" class="text-2xl font-semibold">—</span>
+      </div>
+      <div class="flex items-center justify-between rounded-2xl border p-4 bg-green-50">
+        <span class="text-base font-medium">PVP (x2,88)</span>
+        <span id="cPVP" class="text-2xl font-semibold text-green-700">—</span>
+      </div>
     </section>
   </main>
 
   <script>
-    // Parámetros (tarifas en €/m; conversiones cm→m internas)
-    const PROFILE_RATE_PER_M = 0.65625;  // €/m
-    const LED_RATE_PER_M = 2.00;         // €/m
-    const LED_FACTOR = 0.953125;         // proporción de perímetro
-    const CARTON_RATE_PER_M = 1.76;      // €/m (precio original 0.88 × 2)
-    const CARTON_FACTOR = 1.125;         // proporción de perímetro
-    const FIXED_COST = 11.47;            // €
-    const LABOR_RATE_PER_MIN = 0.25;     // €/min
+    const PROFILE_RATE_PER_M = 0.65625;
+    const LED_RATE_PER_M = 2.00;
+    const LED_FACTOR = 0.953125;
+    const CARTON_PRICE_PER_M = 1.76;
+    const LABOR_RATE_PER_MIN = 0.25;
+
+    const FIXED_ITEMS = [
+      { label: "Plastificado espejo", price: 1.00 },
+      { label: "4 codos marco trasero", price: 1.40 },
+      { label: "8 tornillos TORX", price: 0.40 },
+      { label: "Silicona", price: 0.50 },
+      { label: "Driver 60W", price: 6.50 },
+      { label: "Base adhesiva brida", price: 0.15 },
+      { label: "Bridas", price: 0.06 },
+      { label: "Caja conexiones", price: 0.50 },
+      { label: "Cola caliente", price: 0.50 },
+      { label: "Asa modelo 1000", price: 0.07 },
+      { label: "Refuerzo modelo 200", price: 0.11 },
+      { label: "Amortización máquina", price: 1.00 },
+      { label: "Etiqueta técnica", price: 0.20 },
+      { label: "Bolsa + manual", price: 0.50 },
+      { label: "Pegatina espejo", price: 0.50 },
+    ];
+    const FIXED_COST = FIXED_ITEMS.reduce((acc, it) => acc + it.price, 0);
+
+    const FANFOLD_WIDTHS_MM = [990, 1500, 1980, 2400];
+    const K_FACTORS = {
+      "990x990": 2.37997 / 3.60,
+      "1500x990": 3.63600 / 4.80,
+      "990x1500": 3.63600 / 4.80,
+      "1500x1500": 4.50600 / 5.31,
+    };
+    const EXP_FALLBACK = 0.6;
+    const LEN_BASE_PER_H = 1215 / 800;
+    const LEN_TAPA_PER_H = 1188 / 800;
 
     const $ = (id) => document.getElementById(id);
     const euros = (n) => (new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })).format(n || 0);
 
-    const inputs = ["precioEspejo", "minutos", "transporte", "anchoCm", "altoCm"];  
-    inputs.forEach(id => $(id).addEventListener('input', calc));
-
-    function valNum(id) {
-      const v = parseFloat($(id).value);
-      return Number.isFinite(v) ? v : 0;
+    function pickWidth(requiredMm) { for (const w of FANFOLD_WIDTHS_MM) if (w >= requiredMm) return w; return FANFOLD_WIDTHS_MM[FANFOLD_WIDTHS_MM.length - 1]; }
+    function areaPartM2(fanfoldMm, lengthMm) { return (fanfoldMm / 1000) * (lengthMm / 1000); }
+    function getK(wb, wt) {
+      const key = `${wb}x${wt}`;
+      let k = K_FACTORS[key] ?? K_FACTORS[`${wt}x${wb}`];
+      if (k) return k;
+      const kref = K_FACTORS["990x990"];
+      const avg = (wb + wt) / 2;
+      return kref * Math.pow(avg / 990, EXP_FALLBACK);
+    }
+    function estimateLengthsMm(Hmm) { return { base: Math.round(Hmm * LEN_BASE_PER_H), tapa: Math.round(Hmm * LEN_TAPA_PER_H) }; }
+    function cartonUnitsMeters(Wcm, Hcm) {
+      const Wmm = Wcm * 10, Hmm = Hcm * 10;
+      const { base: Lb, tapa: Lt } = estimateLengthsMm(Hmm);
+      const w_base = pickWidth(Wmm);
+      const w_tapa = pickWidth(Wmm);
+      const areaTotal = areaPartM2(w_base, Lb) + areaPartM2(w_tapa, Lt);
+      const k = getK(w_base, w_tapa);
+      return areaTotal / k;
     }
 
-    function calc() {
-      const E = valNum("precioEspejo");
-      const Min = valNum("minutos");
-      const T = valNum("transporte");
-      const Wcm = valNum("anchoCm");
-      const Hcm = valNum("altoCm");
+    ["precioEspejo", "minutos", "transporte", "anchoCm", "altoCm"].forEach(id => $(id).addEventListener('input', calc));
 
+    function valNum(id) { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : 0; }
+
+    function calc() {
+      const E = valNum("precioEspejo"), Min = valNum("minutos"), T = valNum("transporte"), Wcm = valNum("anchoCm"), Hcm = valNum("altoCm");
       const invalido = (Wcm <= 0 || Hcm <= 0);
 
-      const Pcm = 2 * (Wcm + Hcm);        // cm
-      const Pm  = Pcm / 100;              // m
-
+      const Pcm = 2 * (Wcm + Hcm);
+      const Pm  = Pcm / 100;
       const led_m = LED_FACTOR * Pm;
       const perfil_m = Pm;
-      const carton_m = CARTON_FACTOR * Pm;
+
+      const carton_m = cartonUnitsMeters(Wcm, Hcm);
+      const costeCarton = CARTON_PRICE_PER_M * carton_m;
 
       const costePerfil = PROFILE_RATE_PER_M * perfil_m;
       const costeLed = LED_RATE_PER_M * led_m;
-      const costeCarton = CARTON_RATE_PER_M * carton_m;
       const manoObra = LABOR_RATE_PER_MIN * Min;
-
-      const total = (invalido ? 0 : (E + costePerfil + costeLed + costeCarton + manoObra + T + FIXED_COST));
+      const costeFabricacion = (invalido ? 0 : (E + costePerfil + costeLed + costeCarton + manoObra + T + FIXED_COST));
 
       $("kpiPerimetro").textContent = invalido ? '—' : (Pcm.toFixed(0) + ' cm');
       $("kpiLed").textContent = invalido ? '—' : ((led_m * 100).toFixed(0) + ' cm');
@@ -139,8 +177,22 @@
       $("cVidrio").textContent = invalido ? '—' : euros(E);
       $("cMano").textContent = euros(manoObra);
       $("cTransporte").textContent = euros(T);
-      $("cFijos").textContent = euros(FIXED_COST);
-      $("cTotal").textContent = euros(total);
+
+      $("fixedList").innerHTML = FIXED_ITEMS.map(it => `<li>${it.label}: ${euros(it.price)}</li>`).join('');
+
+      const alertBox = $("driverAlert");
+      const alertText = $("driverAlertText");
+      if (!invalido && Pcm > 600) {
+        alertBox.classList.remove('hidden');
+        alertText.textContent = `Perímetro: ${Pcm.toFixed(0)} cm (> 600 cm). Necesitas cambiar el driver.`;
+      } else {
+        alertBox.classList.add('hidden');
+        alertText.textContent = '';
+      }
+
+      $("cTotal").textContent = euros(costeFabricacion);
+      const pvp = costeFabricacion * 2.88;
+      $("cPVP").textContent = euros(pvp);
     }
 
     calc();
